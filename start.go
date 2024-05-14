@@ -4,6 +4,7 @@ import (
 	"context"
 	"entdemo/ent"
 	"entdemo/ent/car"
+	"entdemo/ent/group"
 	"entdemo/ent/user"
 	"fmt"
 	"log"
@@ -135,6 +136,138 @@ func QueryCarsUsers(ctx context.Context, a8m *ent.User) error {
 
 		log.Printf("car %s owner %s\n", c.Model, owner.Name)
 	}
+
+	return nil
+}
+
+func CreateGraph(ctx context.Context, client *ent.Client) error {
+	a8m, err := client.User.
+		Create().
+		SetAge(30).
+		SetName("Ariel").
+		Save(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	neta, err := client.User.
+		Create().
+		SetAge(28).
+		SetName("Neta").
+		Save(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	err = client.Car.
+		Create().
+		SetModel("Tesla").
+		SetRegisteredAt(time.Now()).
+		SetOwner(a8m).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	err = client.Car.
+		Create().
+		SetModel("Mazda").
+		SetRegisteredAt(time.Now()).
+		SetOwner(a8m).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	err = client.Car.
+		Create().
+		SetModel("Ford").
+		SetRegisteredAt(time.Now()).
+		SetOwner(neta).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	err = client.Group.
+		Create().
+		SetName("GitLab").
+		AddUsers(neta, a8m).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	err = client.Group.
+		Create().
+		SetName("GitHub").
+		AddUsers(a8m).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	log.Println("The graph was created")
+
+	return nil
+}
+
+func QueryGithub(ctx context.Context, client *ent.Client) error {
+	cars, err := client.Group.
+		Query().
+		Where(group.Name("Github")).
+		QueryUsers().
+		QueryCars().
+		All(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed getting cars: %w", err)
+	}
+
+	log.Println("cars returned : ", cars)
+
+	return nil
+}
+
+func QueryArielCars(ctx context.Context, client *ent.Client) error {
+	a8m := client.User.
+		Query().
+		Where(user.HasCars(), user.Name("Ariel")).
+		OnlyX(ctx)
+
+	cars, err := a8m.QueryGroups().
+		QueryUsers().
+		QueryCars().
+		Where(car.Not(car.Model("Mazda"))).
+		All(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed getting cars: %w", err)
+	}
+
+	log.Println("cars returned : ", cars)
+
+	return nil
+}
+
+func QueryGroupWithUsers(ctx context.Context, client *ent.Client) error {
+	groups, err := client.Group.
+		Query().
+		Where(group.HasUsers()).
+		All(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed getting groups: %w", err)
+	}
+
+	log.Println("groups returned : ", groups)
 
 	return nil
 }
