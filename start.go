@@ -117,3 +117,24 @@ func QueryCars(ctx context.Context, a8m *ent.User) error {
 
 	return nil
 }
+
+func QueryCarsUsers(ctx context.Context, a8m *ent.User) error {
+	cars, err := a8m.QueryCars().All(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed querying cars: %w", err)
+	}
+
+	//역방향 엣지 질의
+	for _, c := range cars {
+		owner, err := c.QueryOwner().Only(ctx)
+
+		if err != nil {
+			return fmt.Errorf("failed querying cars: %w", err)
+		}
+
+		log.Printf("car %s owner %s\n", c.Model, owner.Name)
+	}
+
+	return nil
+}
